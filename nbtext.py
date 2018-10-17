@@ -48,11 +48,9 @@ def metadata(urn="""text"""):
 
 def pure_urn(data):
     """Convert URN-lists with extra data into list of serial numbers.
-
     Args:
         data: May be a list of URNs, a list of lists with URNs as their
             initial element, or a string of raw texts containing URNs
-
     Returns:
         List[str]: A list of URNs. Empty list if input is on the wrong
             format or contains no URNs
@@ -91,7 +89,17 @@ def difference(first, second, rf, rs, years=(1980, 2000),smooth=1, corpus='bok')
     except:
         res = 'Mangler noen data - har bare for: ' + ', '.join([x for x in a.columns.append(b.columns)])
     return res
-    
+
+def df_combine(array_df):
+    """Combine one columns dataframes"""
+    import pandas as pd
+    cols = []
+    for i in range(len(a)):
+        #print(i)
+        if array_df[i].columns[0] in cols:
+            array_df[i].columns = [array_df[i].columns[0] + '_' + str(i)]
+        cols.append(array_df[i].columns[0])
+    return pd.concat(a, axis=1, sort=True)
 
 def col_agg(df, col='sum'):
     c = df.sum(axis=0)
@@ -148,7 +156,73 @@ def get_papers(top=5, cutoff=5, navn='%', yearfrom=1800, yearto=2020, samplesize
 
     return [dict(x) for x in r]
 
-def collocation(word, yearfrom=2010, yearto=2018, before=3, after=3, limit=1000, corpus='avis'):
+def collocation(
+    word, 
+    yearfrom=2010, 
+    yearto=2018, 
+    before=3, 
+    after=3, 
+    limit=1000, 
+    corpus='avis',
+    lang='nob',
+    title='%',
+    ddk='%', 
+    subtitle='%'):
+    """Defined collects frequencies for a given word"""
+    
+    data =  requests.get(
+        "https://api.nb.no/ngram/collocation", 
+        params={
+            'word':word,
+            'corpus':corpus, 
+            'yearfrom':yearfrom, 
+            'before':before,
+            'after':after,
+            'limit':limit,
+            'yearto':yearto,
+        'title':title,
+        'ddk':ddk,
+        'subtitle':subtitle}).json()
+    return pd.DataFrame.from_dict(data['freq'], orient='index')
+
+
+def collocation_data(words, yearfrom = 2000, yearto = 2005, limit = 1000, before = 5, after = 5, title = '%'):
+    """Collocation for a set of words sum up all the collocations"""
+    a = dict()
+    
+    if isinstance(words, str):
+        words = words.split()
+    
+    for word in words:
+        
+        print(word)
+        try:
+            
+            a[word] = collocation(
+                word, 
+                yearfrom = yearfrom, yearto = yearto, limit = limit, 
+                corpus = 'bok', before = before, 
+                after = after, title = title
+            )
+            
+            a[word].columns = [word]
+        
+        except:    
+            print(w, ' feilsituasjon')    
+    b=b.fillna(0)
+    
+    b = pd.DataFrame(b.sum(axis=1) )
+    
+    return b.sort_values(by=0, ascending=False)
+
+    
+    b = pd.DataFrame()
+    
+    for w in a.keys():
+        b = b.join(a[w], how="outer")
+
+
+def collocation_old(word, yearfrom=2010, yearto=2018, before=3, after=3, limit=1000, corpus='avis'):
     data =  requests.get(
         "https://api.nb.no/ngram/collocation", 
         params={
@@ -794,7 +868,10 @@ def get_urnkonk(word, params=None, html=True):
     return res
 
 def frame(something, name):
-    res =  pd.DataFrame(something)
+    if isinstance(something, dict):
+        res = pd.DataFrame.from_dict(something, orient='index')
+    else:
+        res =  pd.DataFrame(something)
     res.columns = [name]
     return res
 
@@ -978,3 +1055,44 @@ class Corpus_urn:
 
 def check_vals(korpus, vals):
     return korpus[korpus.index.isin(vals)].sort_values(by=0, ascending=False)
+
+#======================== Utilities
+
+def xmlpretty(xmls):
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(xmls, features='lxml')
+    soup.prettify()
+    # '<html>\n <head>\n </head>\n <body>\n  <a href="http://example.com/">\n...'
+
+    print(soup.prettify())
+
+def dewey(dewey):
+    r = requests.get("https://api.nb.no:443/dewey/v1/list", params={'class':dewey, 'language':'nob'})
+    try:
+        ddk = r.json()
+
+        ddc = dict()
+
+        if 'deweyPathList' in ddk:
+            for item in ddk['deweyPathList']:
+                ddc[str(item['level'])] = [item['classValue'], item['heading']]
+    except:
+        ddc = []
+    return ddc
+
+def metadata_xml(URN, kind='marcxml'):
+    if isinstance(URN, int):
+        URN = "URN:NBN:no-nb_digibok_{urn}".format(urn=str(URN))
+    elif isinstance(URN, str):
+        if URN.startswith('URN'):
+            URN = URN
+        else:
+            URN = "URN:NBN:no-nb_digibok_{urn}".format(urn=URN)
+    
+    r = requests.get("https://api.nb.no:443/catalog/v1/metadata/{urn}/{kind}".format(urn=URN, kind=kind))
+    try:
+        res = r.text
+    except:
+        res = ""
+    return res
