@@ -124,13 +124,15 @@ def draw_graph_centrality2(G, Subsets=[],  h=15, v=10, deltax=0, deltay=0, fonts
     colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
     node_dict = centrality(G)
     subnodes = dict({x:node_dict[x] for x in node_dict if node_dict[x] >= threshold})
+    #print(subnodes)
     x, y = rcParams['figure.figsize']
     rcParams['figure.figsize'] = h, v
     
     ax = plt.subplot()
     ax.set_xticks([])
     ax.set_yticks([])
-    G = G.subgraph(subnodes)
+    #G = G.subgraph(subnodes)
+    glob_col = sns.hls_palette(len(G), h=colstart, l=coldark)[0]
     pos = nx.spring_layout(G, k=k)
     labelpos = dict({k:(pos[k][0]+ deltax, pos[k][1] + deltay) for k in pos })
     #print(labelpos)
@@ -148,15 +150,17 @@ def draw_graph_centrality2(G, Subsets=[],  h=15, v=10, deltax=0, deltay=0, fonts
             #sub_col = list(colors.values())[np.random.randint(20,100)]
             sub_col= colpalette[i]
             #print(i, sub_col, sublist.keys())
-            nx.draw_networkx_nodes(G, pos, alpha=node_alpha, node_color=sub_col ,  nodelist=sublist.keys(), node_size=[v * multi for v in sublist.values()])
+            #print(i, sub_col)
+            nx.draw_networkx_nodes(G, pos, alpha=node_alpha, node_color = [sub_col], nodelist= [x for x in sublist.keys()], node_size = [v * multi for v in sublist.values()])
             i += 1
     else:
-        #nx.draw_networkx_nodes(G, pos, alpha=node_alpha, node_color=sub_col ,  nodelist=subnodes.keys(), node_size=[v * multi for v in subnodes.values()])
+        nx.draw_networkx_nodes(G, pos, alpha=node_alpha, node_color= glob_col,  nodelist = subnodes.keys(), node_size = [v * multi for v in subnodes.values()])
         True
-    nx.draw_networkx_edges(G, pos, alpha=0.1, arrows=arrows, edge_color=edge_color)
+        
+    nx.draw_networkx_edges(G, pos, alpha=0.1, arrows = arrows, edge_color = edge_color)
 
     rcParams['figure.figsize'] = x, y
-
+    return
 
 
 # Set palette using: sns.hls_palette(10, h=.6, l=.1)
@@ -253,18 +257,6 @@ def make_cliques_from_graph(G, lable_num = 2):
     return (ggg, coms, sg)
 
 
-
-def draw_tree(G, node_size=1, node_color='slategrey', n=5, m=1):
-    ax = plt.subplot()
-    draw_graph(G, h= 5, v=8, layout= lambda g: tree_positions(g, n, increment=m), node_color=node_color, node_size=node_size, fontsize=18,arrows=False)
-    fmin, fmax = plt.xlim()
-    plt.xlim(fmin-10,fmax+10)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    #plt.savefig('krig.svg')
-
-
-
 def my_layout(G):
     """For grafer fra make_cliques der koden ligger i de to første tallene"""
     pos = dict()
@@ -296,7 +288,7 @@ def root_nodes(G):
 
 def tree_positions(Tree, spacing, increment=1):
     root = root_nodes(Tree)[0]
-    return tree_pos(root, Tree, 1, spacing, 3,1, level_increment=increment)[0]
+    return tree_pos(root, Tree, 1, spacing, 3, 3, level_increment=increment)[0]
 
 def tree_pos(x, G, level, spacing, num, left_edge, level_increment = 1):
     """Draw from left to right for left_edge"""
@@ -341,21 +333,29 @@ def node_set(root, G):
 
         
     
-def draw_forest(F, spacing, save_name=False):
+def draw_tree(G, node_size=1, node_color='slategrey', n=2, m = 1, h=10, v=10):
+    #plt.subplot()
+    draw_graph(G, h = h, v = v, layout= lambda g: tree_positions(g, n, increment=m), node_color=node_color, node_size=node_size, fontsize=18,arrows=False)
+    fmin, fmax = plt.xlim()
+    plt.xlim(fmin-10,fmax+10)
+    #ax.set_xticks([])
+    #ax.set_yticks([])
+    #plt.savefig('krig.svg')
+
+def draw_forest(F, spacing, h=15, v=10, save_name=False):
     import matplotlib.pyplot as plt
     
-    rows = len(F)
-    row = 1
+    #rows = len(F)
+    #row = 1
+    #plt.figsize=(15,10)
     for tree in F:
         #print(tree.nodes())
         #plt.subplot(rows,row,1)
-        plt.figure(row)
-        row += 1
-        draw_tree(tree, node_size=0.5)
+        #plt.figure(row)
+        #row += 1
+        draw_tree(tree, node_size=0.5, h=h, v=v)
         if save_name:
             plt.savefig('{name}-{row}.png'.format(name=save_name, row=row, dpi=300))
-
-
 
 def print_list_of_sets(los):
     for x in los:
